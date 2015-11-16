@@ -7,7 +7,7 @@ use LWP;
 use XML::Simple;
 use Data::Dumper;
 use vars qw($VERSION);
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 1;
 
@@ -18,6 +18,8 @@ Netdot::Client::REST - RESTful API for Netdot
 =head1 SYNOPSIS
 
  use Netdot::Client::REST;
+ use Data::Dumper;
+
  my $netdot = Netdot::Client::REST->new(
      server=>'http://localhost.localdomain/netdot',
      username=>'admin',
@@ -26,6 +28,8 @@ Netdot::Client::REST - RESTful API for Netdot
 
  # Get all devices
  my @devs = $netdot->get('/Device');
+
+ print Dumper(@devs);
 
  # Get Device id 1
  my $dev = $netdot->get('/Device/1');
@@ -51,6 +55,7 @@ database. Communication occurs over HTTP/HTTPS, thus avoiding the need to open S
 =cut
 
 ############################################################################
+
 =head2 new - Constructor and login method
 
   Arguments:
@@ -64,13 +69,14 @@ database. Communication occurs over HTTP/HTTPS, thus avoiding the need to open S
   Returns:
     Netdot::Client::REST object
   Examples:
-    my $netdot = Netot::Client::REST->new(
+    my $netdot = Netdot::Client::REST->new(
          server   =>'http://host.localdomain/netdot',
          username => 'myuser',
          password => 'mypass',
     );
 
 =cut
+
 sub new { 
     my ($proto, %argv) = @_;
     my $class = ref( $proto ) || $proto;
@@ -133,6 +139,7 @@ sub new {
 =cut
 
 ############################################################################
+
 =head2 get - Get all attributes from one or more Netdot objects
 
   Arguments:
@@ -167,6 +174,7 @@ sub new {
     my @mydevs = $netdot->get('Device?sysname=mydev');
  
 =cut
+
 sub get { 
     my ($self, $resource) = @_;
     croak "Missing required arguments" unless ( $resource );
@@ -182,6 +190,7 @@ sub get {
 }
 
 ############################################################################
+
 =head2 post - Update or Insert a Netdot object
 
   Arguments:
@@ -194,6 +203,7 @@ sub get {
     $netdot->post('Device', \%data);
  
 =cut
+
 sub post { 
     my ($self, $resource, $data) = @_;
     croak "Missing required arguments" unless ( $resource && $data );
@@ -208,6 +218,7 @@ sub post {
 }
 
 ############################################################################
+
 =head2 delete - Delete a Netdot object
 
   Arguments:
@@ -218,6 +229,7 @@ sub post {
     $netdot->delete('Device/1');
  
 =cut
+
 sub delete { 
     my ($self, $resource) = @_;
     croak "Missing required arguments" unless ( $resource );

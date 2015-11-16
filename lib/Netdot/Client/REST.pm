@@ -7,7 +7,7 @@ use LWP;
 use XML::Simple;
 use Data::Dumper;
 use vars qw($VERSION);
-$VERSION = '1.0';
+$VERSION = '1.01';
 
 1;
 
@@ -17,27 +17,30 @@ Netdot::Client::REST - Perl module for interacting with the Netdot application u
 
 =head1 SYNOPSIS
 
-use Netdot::Client::REST;
-my $netdot = Netdot::Client::REST->new(
-    server=>'http://localhost.localdomain/netdot',
-    username=>'admin',
-    password=>'xxxxx',
-    );
+ use Netdot::Client::REST;
+ my $netdot = Netdot::Client::REST->new(
+     server=>'http://localhost.localdomain/netdot',
+     username=>'admin',
+     password=>'xxxxx',
+     );
 
-# Get all devices
-my $dev = $netdot->get('/Device');
+ # Get all devices
+ my $dev = $netdot->get('/Device');
 
-# Get Device id 1
-my $dev = $netdot->get('/Device/1');
+ # Get Device id 1
+ my $dev = $netdot->get('/Device/1');
 
-# Get Device id 1 and foreign objects one level away
-my $dev = $netdot->get('/Device/1?depth=1');
+ # Get Device id 1 and foreign objects one level away
+ my $dev = $netdot->get('/Device/1?depth=1');
 
-# Update Device 1
-$dev = $netdot->post('/Device/1', {community=>'public'});
+ # Update Device 1
+ $dev = $netdot->post('/Device/1', {community=>'public'});
 
-# Delete Device 1
-$netdot->delete('/Device/1');
+ # Delete Device 1
+ $netdot->delete('/Device/1');
+
+
+See examples/ directory for a sample script
 
 =head1 DESCRIPTION
 
@@ -128,6 +131,7 @@ sub new {
 
 
 =head1 INSTANCE METHODS
+=cut
 
 ############################################################################
 =head2 get - Get all attributes from one or more Netdot objects

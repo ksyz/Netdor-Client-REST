@@ -1,6 +1,6 @@
 ---
 name: Netdot-Client-REST
-version: 1.0
+version: 1.01
 author:
   - 'Carlos Vicente  <cvicente@cpan.org>'
 abstract: Perl module for interacting with the Netdot application using the REST model
@@ -15,7 +15,7 @@ requires:
 provides:
   Netdot::Client::REST:
     file: lib/Netdot/Client/REST.pm
-    version: 1.0
+    version: 1.01
 generated_by: Module::Build version 0.280801
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html

@@ -183,7 +183,10 @@ sub get {
     my $url = $self->{base_url}.'/'.$resource;
     my $resp = $self->{ua}->get($url);
     if ( $resp->is_success ){
-	$data = $self->{xs}->XMLin($resp->content);
+	$data = $self->{xs}->XMLin($resp->content)
+		if ( $resp->content_type eq 'text/xml' );
+	
+	croak "Error: not an XML reponse: $url, content type: ".$resp->content_type;
     }else{
 	croak "Error: could not get $url: ".$resp->status_line;
     }

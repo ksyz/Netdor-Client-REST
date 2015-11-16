@@ -7,13 +7,13 @@ use LWP;
 use XML::Simple;
 use Data::Dumper;
 use vars qw($VERSION);
-$VERSION = '1.01';
+$VERSION = '1.02';
 
 1;
 
 =head1 NAME
 
-Netdot::Client::REST - Perl module for interacting with the Netdot application using the REST model
+Netdot::Client::REST - RESTful API for Netdot
 
 =head1 SYNOPSIS
 
@@ -25,7 +25,7 @@ Netdot::Client::REST - Perl module for interacting with the Netdot application u
      );
 
  # Get all devices
- my $dev = $netdot->get('/Device');
+ my @devs = $netdot->get('/Device');
 
  # Get Device id 1
  my $dev = $netdot->get('/Device/1');
@@ -45,8 +45,7 @@ See examples/ directory for a sample script
 =head1 DESCRIPTION
 
 Netdot::Client::REST can be used in Perl scripts that need access to the Netdot application
-database. Communication occurs over HTTP/HTTPS, thus avoiding the need to open SQL access on the
-machine running Netdot.  
+database. Communication occurs over HTTP/HTTPS, thus avoiding the need to open SQL access on the machine running Netdot.  
 
 =head1 CLASS METHODS
 =cut
@@ -145,7 +144,8 @@ sub new {
     referenced by the given object and records that reference the given object (both
     sides of the one-to-many relationship).  The performance impact of the given depth
     is a balance between fewer queries with large datasets and more queries with smaller
-    datasets. The default depth is 0 (only return the given object).
+    datasets. The default depth is 0 (only return the given object plus references
+    to objects directly related).
 
   Returns:
     hashref with object's attributes
@@ -190,8 +190,8 @@ sub get {
   Returns:
     hashref with object's attributes
   Examples:
-    $netdot->post('Device/1', %data);
-    $netdot->post('Device', %data);
+    $netdot->post('Device/1', \%data);
+    $netdot->post('Device', \%data);
  
 =cut
 sub post { 
@@ -232,8 +232,6 @@ sub delete {
     }
 }
 
-=cut
-
 =head1 AUTHOR
 
 Carlos Vicente  <cvicente@cpan.org>
@@ -244,7 +242,7 @@ The Network Documentation Tool <http://netdot.uoregon.edu>
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2010, Carlos Vicente <cvicente@cpan.org>. All rights reserved.
+Copyright (c) 2012, Carlos Vicente <cvicente@cpan.org>. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See L<perlartistic>.

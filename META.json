@@ -1,0 +1,44 @@
+{
+   "abstract" : "RESTful API for Netdot",
+   "author" : [
+      "Carlos Vicente  <cvicente@cpan.org>"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.110930",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Netdot-Client-REST",
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "Module::Build" : "0.38"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Data::Dumper" : 0,
+            "LWP" : 0,
+            "XML::Simple" : 0,
+            "perl" : "v5.8.0"
+         }
+      }
+   },
+   "provides" : {
+      "Netdot::Client::REST" : {
+         "file" : "lib/Netdot/Client/REST.pm",
+         "version" : "1.02"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ]
+   },
+   "version" : "1.02"
+}

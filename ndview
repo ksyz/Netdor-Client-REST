@@ -1,0 +1,34 @@
+#!/usr/bin/perl
+# 2016 mi@v3.sk
+
+use strict;
+use warnings;
+use lib 'lib';
+use Data::Dumper;
+use Config::IniFiles;
+use FindBin qw($RealBin);
+use JSON::PP;
+use Getopt::Long qw(:config no_ignore_case bundling);
+
+use Netdot::Client;
+
+GetOptions(
+	'h|help' => sub {
+		print <<HELP;
+USAGE: ndview QUERY [ QUERY .. ]
+QUERY: [object/<id> | object/meta_data | object?field=filter ]
+Examples:
+ - zone/meta_data
+ - zone/666
+ - zone?name=example.com
+HELP
+		exit 0;
+	});
+
+my $client = Netdot::Client->new;
+my $j = JSON::PP->new->ascii->pretty->allow_nonref;
+
+for my $r (@ARGV) {
+	my $x = $client->netdot->get($r);
+	print $j->encode($x);
+}

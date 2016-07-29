@@ -3,13 +3,15 @@ package Netdot::Client;
 
 use strict;
 use warnings;
-use Data::Dumper;
-use Scalar::Util qw(looks_like_number);
+use constant { OVERRIDE => 1 };
 
+use Data::Dumper;
+use Scalar::Util qw(looks_like_number reftype);
+use JSON::PP;
 use Config::IniFiles;
 use FindBin qw($RealBin);
-
-use constant { OVERRIDE => 1 };
+use List::MoreUtils qw(uniq);
+use Net::IP;
 
 use Netdot::Client::REST;
 
@@ -38,6 +40,7 @@ sub new {
 		die "Netdot::Client::REST instance undefinned";
 	}
 
+	$args->{j} = JSON::PP->new->ascii->pretty->allow_nonref;
 	return bless $args, $class;
 };
 
@@ -72,7 +75,7 @@ sub netdot {
 };
 
 sub zone_import {
-	my ($self, $zone_name, $zone_data, $metadata) = @_;
+	my ($self, $zone_name, $zone_data, $metadata, $acl) = @_;
 	my $zone;
 
 	eval {
@@ -82,6 +85,7 @@ sub zone_import {
 		$zone = $self->zone_create($zone_name);
 	}
 
+	$self->zone_update_acl($zone, $acl);
 	$self->zone_update($zone, $metadata)
 		if ($metadata);
 	# return $self->zone_import_data($zone, $zone_data, OVERRIDE);
@@ -146,10 +150,48 @@ sub zone_update {
 	# delete $update->{id};
 	delete $update->{contactlist};
 	$update->{rname} =~ s/\@/./g;
-	
+	eval {
+		$update->{info} = $self->{j}->encode($zone->{info})
+			if ref $zone->{info} && reftype($zone->{info}) eq 'HASH';
+	};
 	my $data = $self->{netdot}->post(
 		sprintf('zone/%d', $zone->{id}), $update );
 	return $data;
 };
+
+#   - Use '+' character as ADDR to remove ACL field
+#   - Field is always overwritten, if specified and valid
+#   - Old value is preserverd, when not specified
+#   - Invalid JSON comment/info data is always (silently) deleted
+sub zone_update_acl {
+	my ($self, $zone, $acl) = @_;
+	my $old_acl = {};
+	eval {
+		if (ref $zone->{info} 
+			&& reftype($zone->{info}) eq 'HASH') {
+			$old_acl = $zone->{info};
+		}
+		else {
+			$old_acl = $self->{j}->decode($zone->{info});
+		}
+	};
+
+	for (keys %$acl) {
+		if (@{$acl->{$_}} < 1 || grep { $_ eq '+' } @{$acl->{$_}}) {
+			delete $old_acl->{$_};
+		}
+		else {
+			$old_acl->{$_} = [uniq(@{$acl->{$_}})];
+			for (@{$acl->{$_}}) {
+				my $ip = Net::IP->new($_) or die (Net::IP::Error());
+			}
+		}
+	}
+
+	# should be done in final save.
+	# $zone->{info} = $self->{j}->encode($old_acl);
+	# print Dumper($self->{j}->encode($old_acl));
+	return $zone->{info} = $old_acl;
+}
 
 1;

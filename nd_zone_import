@@ -28,7 +28,7 @@ sub help {
 -d,--default-ttl TTL
 -i,--info TEXT
 
-* SOA data
+* SOA data overwite/definition
 
 -m,--mname
 -t,--rname
@@ -36,7 +36,10 @@ sub help {
 -R,--refresh
 -t,--retry
 -e,--expire
--M,-minimum
+-M,--minimum
+
+--ignore-soa 
+Ignore SOA ercord from zone data
 
 * DNS server meta data. 
   - Use '+' character as ADDR to remove ACL field
@@ -48,11 +51,10 @@ sub help {
 --also-notify ADDR,ADDR,...
 --masters ADDR,ADDR,...
 
-
 HELP
 };
 
-my ($zone_name, $zone_data_file, @also_notify, @allow_transfer, @allow_query, @masters);
+my ($zone_name, $zone_data_file, $ignore_soa);
 my $md = {};
 my $acl = {
 	also_notify => [],
@@ -75,7 +77,7 @@ my $options = GetOptions(
 
 	'a|active!' => \$md->{active},
 	'T|default-ttl=i' => \$md->{default_ttl},
-
+	'ignore-soa!' => \$ignore_soa,
 	'allow-transfer=s' => \@{$acl->{allow_transfer}},
 	'allow-query=s' => \@{$acl->{allow_query}},
 	'also-notify=s' => \@{$acl->{also_notify}},
@@ -124,13 +126,15 @@ sub read_zone_data {
 		$zone_data = <$fhzd>;
 	};
 
-	my $zone = Net::DNS::ZoneFile::Fast::parse($zone_data);
+	my ($zone, $soa);
+	unless ($ignore_soa) {
+		$zone = Net::DNS::ZoneFile::Fast::parse($zone_data);
 
-	my $soa;
-	for (grep { blessed($_) eq 'Net::DNS::RR::SOA' } @$zone) {
-		$soa = $_;
-		last;
-	};
+		for (grep { blessed($_) eq 'Net::DNS::RR::SOA' } @$zone) {
+			$soa = $_;
+			last;
+		};
+	}
 
 	my $metadata;
 	if ($soa) {

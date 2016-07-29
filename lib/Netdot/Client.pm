@@ -177,10 +177,10 @@ sub zone_update_acl {
 	};
 
 	for (keys %$acl) {
-		if (@{$acl->{$_}} < 1 || grep { $_ eq '+' } @{$acl->{$_}}) {
+		if (grep { $_ eq '+' } @{$acl->{$_}}) {
 			delete $old_acl->{$_};
 		}
-		else {
+		elsif (@{$acl->{$_}} > 0) {
 			$old_acl->{$_} = [uniq(@{$acl->{$_}})];
 			for (@{$acl->{$_}}) {
 				my $ip = Net::IP->new($_) or die (Net::IP::Error());

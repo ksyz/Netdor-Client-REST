@@ -1,0 +1,137 @@
+#!/usr/bin/perl
+# 2016 mi@v3.sk
+
+use strict;
+use warnings;
+use lib 'lib';
+use Data::Dumper;
+
+use JSON::PP;
+use Net::DNS::ZoneFile::Fast;
+use Net::DNS::RR::SOA;
+use Scalar::Util qw(blessed);
+use Getopt::Long qw(:config no_ignore_case bundling);
+use Netdot::Client;
+
+sub help {
+	print <<HELP;
+-z,--zone ZONE
+-d,-[-zone]-data FILE
+
+
+* Zone meta data
+
+-a,-[-no]-active
+-d,--default-ttl TTL
+-i,--info TEXT
+
+* SOA data
+
+-m,--mname
+-t,--rname
+-s,--serial
+-R,--refresh
+-t,--retry
+-e,--expire
+-M,-minimum
+
+* DNS server meta data. 
+  - Use '+' character as ADDR to remove ACL field
+  - Field is always overwritten, if specified and valid
+  - Old value is preserverd, when not specified
+
+--allow-transfer ADDR,ADDR,...
+--allow-query ADDR,ADDR,...
+--also-notify ADDR,ADDR,...
+--masters ADDR,ADDR,...
+
+
+HELP
+};
+
+my ($zone_name, $zone_data_file, @also_notify, @allow_transfer, @allow_query, @masters);
+my $md = {};
+my $acl = {
+	also_notify => [],
+	allow_transfer => [],
+	allow_query => [],
+	masters => [],
+};
+
+my $options = GetOptions(
+	'z|zone=s' => \$zone_name,
+	'd|data|zone-data=s' => \$zone_data_file,
+
+	'm|mname=s' => \$md->{mname},
+	'r|rname=s' => \$md->{rname},
+	's|serial=i' => \$md->{serial},
+	'R|refresh=i' => \$md->{refresh},
+	'M|minimum=i' => \$md->{minimum},
+	't|retry=i' => \$md->{retry},
+	'e|expire=i' => \$md->{expire},
+
+	'a|active!' => \$md->{active},
+	'T|default-ttl=i' => \$md->{default_ttl},
+	'i|info=s' => \$md->{info},
+
+	'allow-transfer=s' => \@{$acl->{allow_transfer}},
+	'allow-query=s' => \@{$acl->{allow_query}},
+	'also-notify=s' => \@{$acl->{also_notify}},
+	'masters=s' => \@{$acl->{masters}},
+);
+
+for (keys %$acl) {
+	# $acl->{allow_transfer} = [ split(/,/,join(',',@{$acl->{allow_transfer}})) ];
+	$acl->{$_} = [ split(/,/,join(',',@{$acl->{$_}})) ];
+}
+
+help && exit 1 
+	unless $options && $zone_name && $zone_data_file;
+
+die "File <$zone_data_file> not found."
+	unless -f $zone_data_file;
+
+my $c = Netdot::Client->new;
+
+open(my $fhzd, '<', $zone_data_file);
+my $zone_data;
+{
+	local $/;
+	$zone_data = <$fhzd>;
+};
+
+my $zone = Net::DNS::ZoneFile::Fast::parse($zone_data);
+
+my $soa;
+for (grep { blessed($_) eq 'Net::DNS::RR::SOA' } @$zone) {
+	$soa = $_;
+	last;
+};
+
+my $metadata;
+if ($soa) {
+	$metadata = {
+		mname => $soa->mname,
+		rname => $soa->rname,
+		serial => $soa->serial,
+		refresh => $soa->refresh,
+		retry => $soa->retry,
+		expire => $soa->expire,
+		minimum => $soa->minimum, 
+	};
+	$metadata->{rname} =~ s/\@/./g;
+	map { $metadata->{$_} = $md->{$_} } grep { defined $md->{$_} } keys %$md;
+}
+else {
+	$metadata = $md;
+}
+
+my $res = $c->zone_import($zone_name, $zone_data, $metadata, $acl);
+
+my $j = JSON::PP->new->ascii->pretty->allow_nonref;
+eval {
+	my $info = $j->decode($res->{info});
+	$res->{info} = $info;
+};
+print $j->encode($res);
+

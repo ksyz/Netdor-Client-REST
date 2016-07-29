@@ -4,9 +4,12 @@ package Netdot::Client;
 use strict;
 use warnings;
 use Data::Dumper;
+use Scalar::Util qw(looks_like_number);
 
 use Config::IniFiles;
 use FindBin qw($RealBin);
+
+use constant { OVERRIDE => 1 };
 
 use Netdot::Client::REST;
 
@@ -26,7 +29,8 @@ sub new {
 			$args->{netdot} = Netdot::Client::REST->new(%$args);
 		}
 		else {
-			$args->{netdot} = Netdot::Client::REST->new($class->configure($args->{config_file}));
+			$args->{netdot} = Netdot::Client::REST->new(
+				$class->configure($args->{config_file}));
 		}
 	}
 
@@ -68,16 +72,31 @@ sub netdot {
 };
 
 sub zone_import {
+	my ($self, $zone_name, $zone_data, $metadata) = @_;
+	my $zone;
+
+	eval {
+		$zone = $self->zone_get($zone_name);
+	};
+	if ($@) {
+		$zone = $self->zone_create($zone_name);
+	}
+
+	$self->zone_update($zone, $metadata)
+		if ($metadata);
+	# return $self->zone_import_data($zone, $zone_data, OVERRIDE);
+};
+
+sub zone_import_data {
 	my $self = shift;
-	my $n = $self->{netdot};
 	my ($zone, $zone_data, $overwrite) = @_;
-	my $url_id = sprintf("%s/management/zone.html?id=%d&view=bulk_import", $n->{server}, $zone->{id});
-	my $url = sprintf("%s/management/zone.html", $n->{server});
-	my $ua = $n->ua;
+
+	my $url = sprintf("%s/management/zone.html", $self->{netdot}{server});
+	my $ua = $self->{netdot}{ua};
 	my $data = {
 		bulk_import_data => $zone_data,
 		id => $zone->{id},
-		import_overwrite => 'on',
+		import_overwrite => ($overwrite ? 'on' : 'off'),
 		submit => 'Import',
 		edit => 'bulk_import'
 	};
@@ -92,13 +111,45 @@ sub zone_import {
 
 sub zone_get {
 	my ($self, $zone_name) = @_;
-	my $n = $self->{netdot};
-	my $zone = $n->get(sprintf('zone?name=%s', $zone_name));
+	my $zone = $self->{netdot}->get(sprintf('zone?name=%s', $zone_name));
 	die sprintf("Zone name <%s> not found.\n")
 		unless $zone->{Zone};
 	my $id = (keys %{$zone->{Zone}})[0];
 	$zone->{Zone}{$id}{id} = $id;
 	return $zone->{Zone}{$id};
+};
+
+sub zone_delete {
+	my ($self, $zone_name) = @_;
+	die "Missing zone_name"
+		unless $zone_name;
+	if (looks_like_number($zone_name)) {
+		$self->{netdot}->delete(sprintf('zone/%d', $zone_name));
+	}
+	else {
+		my $zone = $self->zone_get($zone_name);
+		$self->{netdot}->delete(sprintf('zone/%d', $zone->{id}));
+	}
+};
+
+sub zone_create {
+	my ($self, $zone_name) = @_;
+	die "Missing zone_name"
+		unless $zone_name;
+	my $data = $self->{netdot}->post('zone', { name => $zone_name } );
+	return $data;
+};
+
+sub zone_update {
+	my ($self, $zone, $metadata) = @_;
+	my $update = { %$zone, %$metadata };
+	# delete $update->{id};
+	delete $update->{contactlist};
+	$update->{rname} =~ s/\@/./g;
+	
+	my $data = $self->{netdot}->post(
+		sprintf('zone/%d', $zone->{id}), $update );
+	return $data;
 };
 
 1;

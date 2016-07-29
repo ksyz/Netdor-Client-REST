@@ -85,10 +85,13 @@ sub zone_import {
 		$zone = $self->zone_create($zone_name);
 	}
 
-	$self->zone_update_acl($zone, $acl);
-	$self->zone_update($zone, $metadata)
-		if ($metadata);
-	# return $self->zone_import_data($zone, $zone_data, OVERRIDE);
+	$self->zone_update_acl($zone, $acl)
+		if $acl;
+	$zone = $self->zone_update($zone, $metadata)
+		if $metadata;
+	$self->zone_import_data($zone, $zone_data, OVERRIDE)
+		if $zone_data;
+	return $zone;
 };
 
 sub zone_import_data {
@@ -110,7 +113,6 @@ sub zone_import_data {
 		if ( $r->is_success );
 
 	die $r->status_line;
-
 };
 
 sub zone_get {
@@ -154,6 +156,7 @@ sub zone_update {
 		$update->{info} = $self->{j}->encode($zone->{info})
 			if ref $zone->{info} && reftype($zone->{info}) eq 'HASH';
 	};
+
 	my $data = $self->{netdot}->post(
 		sprintf('zone/%d', $zone->{id}), $update );
 	return $data;
@@ -165,6 +168,7 @@ sub zone_update {
 #   - Invalid JSON comment/info data is always (silently) deleted
 sub zone_update_acl {
 	my ($self, $zone, $acl) = @_;
+
 	my $old_acl = {};
 	eval {
 		if (ref $zone->{info} 

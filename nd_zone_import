@@ -13,6 +13,9 @@ use Scalar::Util qw(blessed);
 use Getopt::Long qw(:config no_ignore_case bundling);
 use Netdot::Client;
 
+sub read_zone_data;
+sub metadata_merge;
+
 sub help {
 	print <<HELP;
 -z,--zone ZONE
@@ -72,7 +75,6 @@ my $options = GetOptions(
 
 	'a|active!' => \$md->{active},
 	'T|default-ttl=i' => \$md->{default_ttl},
-	'i|info=s' => \$md->{info},
 
 	'allow-transfer=s' => \@{$acl->{allow_transfer}},
 	'allow-query=s' => \@{$acl->{allow_query}},
@@ -86,45 +88,17 @@ for (keys %$acl) {
 }
 
 help && exit 1 
-	unless $options && $zone_name && $zone_data_file;
+	unless $options && $zone_name;
 
-die "File <$zone_data_file> not found."
-	unless -f $zone_data_file;
-
-my $c = Netdot::Client->new;
-
-open(my $fhzd, '<', $zone_data_file);
-my $zone_data;
-{
-	local $/;
-	$zone_data = <$fhzd>;
-};
-
-my $zone = Net::DNS::ZoneFile::Fast::parse($zone_data);
-
-my $soa;
-for (grep { blessed($_) eq 'Net::DNS::RR::SOA' } @$zone) {
-	$soa = $_;
-	last;
-};
-
-my $metadata;
-if ($soa) {
-	$metadata = {
-		mname => $soa->mname,
-		rname => $soa->rname,
-		serial => $soa->serial,
-		refresh => $soa->refresh,
-		retry => $soa->retry,
-		expire => $soa->expire,
-		minimum => $soa->minimum, 
-	};
-	$metadata->{rname} =~ s/\@/./g;
-	map { $metadata->{$_} = $md->{$_} } grep { defined $md->{$_} } keys %$md;
+my ($zone_data, $metadata);
+if ($zone_data_file) {
+	($zone_data, $metadata) = read_zone_data($zone_data_file);
 }
 else {
-	$metadata = $md;
+	$metadata = metadata_merge({}, $md);
 }
+
+my $c = Netdot::Client->new;
 
 my $res = $c->zone_import($zone_name, $zone_data, $metadata, $acl);
 
@@ -133,5 +107,53 @@ eval {
 	my $info = $j->decode($res->{info});
 	$res->{info} = $info;
 };
+
 print $j->encode($res);
 
+#####
+sub read_zone_data {
+	my $filename = shift;
+
+	die "File <$zone_data_file> not found."
+		unless -f $zone_data_file;
+
+	open(my $fhzd, '<', $zone_data_file);
+	my $zone_data;
+	{
+		local $/;
+		$zone_data = <$fhzd>;
+	};
+
+	my $zone = Net::DNS::ZoneFile::Fast::parse($zone_data);
+
+	my $soa;
+	for (grep { blessed($_) eq 'Net::DNS::RR::SOA' } @$zone) {
+		$soa = $_;
+		last;
+	};
+
+	my $metadata;
+	if ($soa) {
+		$metadata = {
+			mname => $soa->mname,
+			rname => $soa->rname,
+			serial => $soa->serial,
+			refresh => $soa->refresh,
+			retry => $soa->retry,
+			expire => $soa->expire,
+			minimum => $soa->minimum, 
+		};
+		$metadata = metadata_merge($metadata, $md);
+	}
+	else {
+		$metadata = metadata_merge({}, $md);
+	}
+
+	return ($zone_data, $metadata);
+};
+
+sub metadata_merge {
+	my ($md1, $md2) = @_;
+	map { $md1->{$_} = $md2->{$_} } grep { defined $md2->{$_} } keys %$md2;
+	return $md1;
+}

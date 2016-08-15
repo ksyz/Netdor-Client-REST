@@ -7,7 +7,7 @@ use lib 'lib';
 use Data::Dumper;
 
 use JSON::PP;
-use Net::DNS::ZoneFile::Fast;
+use Net::DNS::ZoneFile;
 use Net::DNS::RR::SOA;
 use Scalar::Util qw(blessed);
 use Getopt::Long qw(:config no_ignore_case bundling);
@@ -128,7 +128,7 @@ sub read_zone_data {
 
 	my ($zone, $soa);
 	unless ($ignore_soa) {
-		$zone = Net::DNS::ZoneFile::Fast::parse($zone_data);
+		$zone = Net::DNS::ZoneFile->parse($zone_data);
 
 		for (grep { blessed($_) eq 'Net::DNS::RR::SOA' } @$zone) {
 			$soa = $_;
